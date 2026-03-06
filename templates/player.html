@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>Player Auction</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+<script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+
+</head>
+
+<body>
+
+<div class="topbar">
+Logged in as: <b>{{ username }}</b>
+</div>
+<div class="topbar">
+
+    Logged in as: <b>{{ username }}</b>
+    
+    <a href="/auction">
+    <button class="back-btn">⬅ Back</button>
+    </a>
+    
+    <a href="/logout">
+    <button class="logout-btn">Logout</button>
+    </a>
+    
+    </div>
+<h1>{{ player["name"] }} Auction</h1>
+
+<div class="auction-box">
+
+<p>Country: {{ player["country"] }}</p>
+<p>Role: {{ player["role"] }}</p>
+
+<p>Matches: {{ player["matches"] }}</p>
+<p>Runs: {{ player["runs"] }}</p>
+<p>Strike Rate: {{ player["strike_rate"] }}</p>
+<p>Wickets: {{ player["wickets"] }}</p>
+
+<p class="price" id="price">
+₹ {{ player["current_bid"] }}
+</p>
+
+<input id="bid" type="number" placeholder="Enter new bid">
+
+<button onclick="placeBid()">
+Place Bid
+</button>
+</div>
+
+<script>
+
+    var socket = io();
+    
+    function placeBid(){
+    
+    let price = document.getElementById("bid").value;
+    
+    socket.emit("bid",{
+    player:"{{ player['name'] }}",
+    price:price
+    });
+    
+    }
+    
+    socket.on("update",function(data){
+    
+    if(data.player == "{{ player['name'] }}"){
+    
+    document.getElementById("price").innerHTML = "₹ " + data.price;
+    
+    }
+    
+    });
+    
+    </script>
+</body>
+</html>

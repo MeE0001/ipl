@@ -1,93 +1,129 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, redirect, session
+from flask_socketio import SocketIO, emit
 import pandas as pd
-from datetime import datetime
+import sqlite3
 
 app = Flask(__name__)
+app.secret_key = "secret"
+
+socketio = SocketIO(app)
 
 FILE = "players.xlsx"
 
 
 def load_players():
-    return pd.read_excel(FILE, engine="openpyxl")
+    return pd.read_excel(FILE)
+
 
 def save_players(df):
     df.to_excel(FILE, index=False)
 
 
+# LOGIN PAGE
 @app.route("/")
-def index():
+def login_page():
+    return render_template("login.html")
+
+
+# SIGNUP
+@app.route("/signup", methods=["GET", "POST"])
+def signup():
+
+    if request.method == "POST":
+
+        username = request.form["username"]
+        password = request.form["password"]
+
+        conn = sqlite3.connect("database.db")
+        cur = conn.cursor()
+
+        cur.execute("CREATE TABLE IF NOT EXISTS users(username TEXT, password TEXT)")
+        cur.execute("INSERT INTO users VALUES (?,?)", (username, password))
+
+        conn.commit()
+        conn.close()
+
+        return redirect("/")
+
+    return render_template("signup.html")
+
+
+# LOGIN CHECK
+@app.route("/login", methods=["POST"])
+def login_check():
+
+    username = request.form["username"]
+    password = request.form["password"]
+
+    conn = sqlite3.connect("database.db")
+    cur = conn.cursor()
+
+    cur.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))
+    user = cur.fetchone()
+
+    conn.close()
+
+    if user:
+        session["username"] = username
+        return redirect("/auction")
+
+    return "Invalid login"
+
+
+# DASHBOARD
+@app.route("/auction")
+def auction():
+
+    if "username" not in session:
+        return redirect("/")
+
     players = load_players()
-    return render_template("index.html", players=players.to_dict(orient="records"))
+
+    return render_template(
+        "index.html",
+        players=players.to_dict(orient="records"),
+        username=session["username"]
+    )
 
 
-@app.route("/search")
-def search():
-    country = request.args.get("country")
+# PLAYER AUCTION PAGE
+@app.route("/player/<int:player_id>")
+def player_page(player_id):
 
-    df = load_players()
-
-    if country:
-        df = df[df["country"].str.lower() == country.lower()]
-
-    return df.to_json(orient="records")
-
-
-@app.route("/player/<int:pid>")
-def player(pid):
-    df = load_players()
-    player = df[df["player_id"] == pid].iloc[0]
-
-    return render_template("auction.html", player=player)
-
-
-@app.route("/bid", methods=["POST"])
-def bid():
-
-    data = request.json
-
-    pid = data["player_id"]
-    bid = int(data["bid"])
+    if "username" not in session:
+        return redirect("/")
 
     df = load_players()
 
-    player = df[df["player_id"] == pid]
+    player = df[df["player_id"] == player_id].iloc[0].to_dict()
 
-    current = int(player["current_bid"].values[0])
+    return render_template(
+        "player.html",
+        player=player,
+        username=session["username"]
+    )
 
-    if bid <= current:
-        return jsonify({"status": "Bid must be higher"})
 
-    now = datetime.now()
+# LIVE BID SYSTEM
+@socketio.on("bid")
+def handle_bid(data):
 
-    df.loc[df.player_id == pid, "current_bid"] = bid
-    df.loc[df.player_id == pid, "last_bid_time"] = now
+    player = data["player"]
+    price = int(data["price"])
+
+    df = load_players()
+
+    df.loc[df["name"] == player, "current_bid"] = price
 
     save_players(df)
 
-    return jsonify({"status": "success"})
+    emit("update", data, broadcast=True)
 
-
-@app.route("/check_auction/<int:pid>")
-def check(pid):
-
-    df = load_players()
-
-    player = df[df.player_id == pid].iloc[0]
-
-    last = player["last_bid_time"]
-
-    if pd.isna(last):
-        return jsonify({"status": "active"})
-
-    last = pd.to_datetime(last)
-
-    diff = (datetime.now() - last).seconds
-
-    if diff > 300:
-        return jsonify({"status": "closed"})
-
-    return jsonify({"status": "active"})
-
+@app.route("/logout")
+def logout():
+    session.pop("username", None)
+    return redirect("/")
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    socketio.run(app, debug=True)
+

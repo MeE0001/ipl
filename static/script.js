@@ -33,3 +33,20 @@ function search(){
     })
     
     }
+    var socket = io();
+
+function placeBid(player) {
+
+    let price = document.getElementById(player).value;
+
+    socket.emit("bid", {
+        player: player,
+        price: price
+    });
+}
+
+socket.on("update", function(data){
+
+    document.getElementById(data.player+"_price").innerHTML = data.price;
+
+});

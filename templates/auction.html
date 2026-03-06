@@ -2,8 +2,9 @@
 <html>
 
 <head>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
 <title>Auction</title>
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
 <body>
@@ -39,33 +40,37 @@ Current Bid: ₹<span id="price">{{ player.current_bid }}</span>
 </div>
 
 </div>
-
 <script>
 
-const playerId = {{ player.player_id }}
-
-function placeBid(){
-
-let bid = document.getElementById("bid").value
-
-fetch("/bid",{
-method:"POST",
-headers:{
-"Content-Type":"application/json"
-},
-body:JSON.stringify({
-player_id:playerId,
-bid:bid
-})
-})
-.then(res=>res.json())
-.then(data=>{
-document.getElementById("msg").innerText=data.status
-})
-
-}
-
-</script>
-
+    const playerId = {{ player.player_id }}
+    
+    function placeBid(){
+    
+    let bid = document.getElementById("bid").value
+    
+    fetch("/bid",{
+    method:"POST",
+    headers:{
+    "Content-Type":"application/json"
+    },
+    body:JSON.stringify({
+    player_id:playerId,
+    bid:bid
+    })
+    })
+    .then(res=>res.json())
+    .then(data=>{
+    
+    document.getElementById("msg").innerText=data.status
+    
+    if(data.status=="success"){
+    document.getElementById("price").innerText=bid
+    }
+    
+    })
+    
+    }
+    
+    </script>
 </body>
 </html>
