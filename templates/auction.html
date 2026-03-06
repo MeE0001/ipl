@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>Auction</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+
+<h1>Live Auction</h1>
+
+<div class="auction-box">
+
+<h2>{{ player.name }}</h2>
+
+<div class="price">
+Current Bid: ₹<span id="price">{{ player.current_bid }}</span>
+</div>
+
+<input id="bid" placeholder="Enter bid">
+
+<br><br>
+
+<button onclick="placeBid()">Place Bid</button>
+
+<p id="msg"></p>
+
+<div class="stats">
+
+<p><b>Country:</b> {{ player.country }}</p>
+<p><b>Role:</b> {{ player.role }}</p>
+<p><b>Previous Team:</b> {{ player.previous_team }}</p>
+<p><b>Strike Rate:</b> {{ player.strike_rate }}</p>
+<p><b>Matches:</b> {{ player.matches }}</p>
+<p><b>Runs:</b> {{ player.runs }}</p>
+<p><b>Wickets:</b> {{ player.wickets }}</p>
+
+</div>
+
+</div>
+
+<script>
+
+const playerId = {{ player.player_id }}
+
+function placeBid(){
+
+let bid = document.getElementById("bid").value
+
+fetch("/bid",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+player_id:playerId,
+bid:bid
+})
+})
+.then(res=>res.json())
+.then(data=>{
+document.getElementById("msg").innerText=data.status
+})
+
+}
+
+</script>
+
+</body>
+</html>
